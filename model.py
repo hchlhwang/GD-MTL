@@ -22,7 +22,6 @@ class SegNet(nn.Module):
     vggFilters = [64, 128, 256, 512, 512]
     self.classNum = 13
 
-    #
     # Initialize enc/decoder block
     self.encoderBlock = nn.ModuleList([self.subBlock([3, vggFilters[0]])])
     self.decoderBlock = nn.ModuleList([self.subBlock([vggFilters[-1]])])
@@ -58,29 +57,44 @@ class SegNet(nn.Module):
       self.upSample = nn.MaxPool2d(kernel_size=2, stride=2)
 
     # Decoder network (13 corresponding layers)
-
     # Pixelwise classifcaiton layer
-
     # First convolution blocks in the encoder network (layers 1, 3, 5, 8, 11)
-    def subBlock(self, Filter, pred=False):
-      if len(Filter) == 2: # Encoder/Decoder block
+
+    # Initialize weights
+    initWeights()
+
+  # Sublock contains: conv + batch norm + ReLU
+  def subBlock(self, Filter, pred=False):
+    if len(Filter) == 2: # Encoder/Decoder block
+      block = nn.Sequential(
+        nn.Conv2d(in_channels=seqFilters[0], out_channels=seqFilters[1], kernel_size=3, padding=1),
+        nn.BatchNorm2d(num_features=seqFilters[1]),
+        nn.ReLU(),
+      )
+    else: # Conv/deconvolution block
+      if pred:
         block = nn.Sequential(
-          nn.Conv2d(in_channels=seqFilters[0], out_channels=seqFilters[1], kernel_size=3, padding=1),
+          nn.Conv2d(in_channels=seqFilters[0], out_channels=seqFilters[0], kernel_size=3, padding=1),
+          nn.Conv2d(in_channels=seqFilters[0], out_channels=seqFilters[1], kernel_size=1, padding=0),
+        )
+      else:
+        block = nn.Sequential(
+          nn.Conv2d(in_channels=seqFilters[0], out_channels=seqFilters[0], kernel_size=3, padding=1),
           nn.BatchNorm2d(num_features=seqFilters[1]),
           nn.ReLU(),
         )
-      else: # Conv/deconvolution block
-        if pred:
-          block = nn.Sequential(
-            nn.Conv2d(in_channels=seqFilters[0], out_channels=seqFilters[0], kernel_size=3, padding=1),
-            nn.Conv2d(in_channels=seqFilters[0], out_channels=seqFilters[1], kernel_size=1, padding=0),
-          )
-        else:
-          block = nn.Sequential(
-            nn.Conv2d(in_channels=seqFilters[0], out_channels=seqFilters[0], kernel_size=3, padding=1),
-            nn.BatchNorm2d(num_features=seqFilters[1]),
-            nn.ReLU(),
-          )
-      return block
+    return block
 
-    encoderBLock, convBlock, max2d, upsample, convBlock, decoderBlock
+  def initWeights(self):
+    for m in self.Modules():
+      if isinstance(m, nn.Conv2d):
+        nn.init.xavier_normal_(m.weight)
+        nn.init.constant_(m.bias, 0)
+      elif isinstance(m, nn.Conv2d):
+        nn.init.constant_(m.weight, 1)
+        nn.init.constant_(m.bias, 0)
+      elif isinstance(m, nn.Conv2d):
+
+
+
+  def forward(self, x):

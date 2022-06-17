@@ -8,7 +8,7 @@ def main():
   parseTag()
 
   # Set GPU
-  device = torch.cuda.device("cuda")
+  device = torch.cuda.device('cuda:0' if torch.cuda.is_available else 'cpu')
 
   # Send model to GPU
   model = SegNet().to(device)
