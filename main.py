@@ -14,7 +14,7 @@ def main():
   else:
     device = torch.device("mps")
 
-  print(f"Using GPS device: {device}")
+  print(f"Using {torch.cuda.get_device_name(0)} GPS device")
 
   # Send model to GPU
   model = SegNet().to(device)
