@@ -99,27 +99,27 @@ class SegNet(nn.Module):
                 nn.init.constant_(m.bias, 0)
 
     def forward(self, x):
-    	indices = [0] * 5
+        indices = [0] * 5
 
-    	# Forword encoder block
-    	for i in range(5):
-    		if i < 2:
-    			x = self.encoderBlock[2*i+1](self.encoderBlock[2*i](x))
-    			x, indices[i] = self.downSample(x)
-    		else:
-    			x = self.encoderBlock[3*i-1](self.encoderBlock[3*i-2](x))
-    			x = self.encoderBlock[3*i](x)
-    			x, indices[i] = self.downSample(x)
+        # Forword encoder block
+        for i in range(5):
+            if i < 2:
+                x = self.encoderBlock[2*i+1](self.encoderBlock[2*i](x))
+                x, indices[i] = self.downSample(x)
+            else:
+                x = self.encoderBlock[3*i-1](self.encoderBlock[3*i-2](x))
+                x = self.encoderBlock[3*i](x)
+                x, indices[i] = self.downSample(x)
 
-    	# Forword decoder block
-    	for i in range(5):
-    		if i < 3:
-    			x = self.encoderBlock[3*i+1](self.encoderBlock[3*i](x))
-    			x = self.encoderBlock[3*i+2](x)
-    			x = self.upSample(x)
-    		else:
-    			x = self.encoderBlock[2*i+4](self.encoderBlock[2*i+3](x))
-    			x = self.upSample(x)
+        # Forword decoder block
+        for i in range(5):
+            if i < 3:
+                x = self.encoderBlock[3*i+1](self.encoderBlock[3*i](x))
+                x = self.encoderBlock[3*i+2](x)
+                x = self.upSample(x)
+            else:
+                x = self.encoderBlock[2*i+4](self.encoderBlock[2*i+3](x))
+                x = self.upSample(x)
 
         # Prediction layer
         if option.task == 'semantic':
@@ -128,6 +128,6 @@ class SegNet(nn.Module):
             pred = self.predLayer(x)
         elif option.task == 'normal':
             pred = self.predLayer(x)
-        	pred = pred / torch.norm(pred, p=2, dim=1, keepdim=True)
+            pred = pred / torch.norm(pred, p=2, dim=1, keepdim=True)
 
         return pred
