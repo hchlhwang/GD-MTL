@@ -13,7 +13,15 @@
 """
 import torch.nn as nn
 import torch.nn.functional as F
-from util import parseTag
+import argparse
+
+
+parser = argparse.ArgumentParser(description='SegNet, single-task')
+parser.add_argument('--task', default='semantic', type=str, help="Task: semantic depth, normal")
+parser.add_argument('--data', default='preprocessed', type=str, help="Data path")
+parser.add_argument('--apply_augmentation', action='store_true', help='toggle to apply data augmentation on NYUv2')
+option = parser.parse_args()
+
 
 class SegNet(nn.Module):
     def __init__(self):
@@ -25,48 +33,48 @@ class SegNet(nn.Module):
 
         # Initialize enc/decoder block
         self.encoderBlock = nn.ModuleList([self.subBlock([3, vggFilters[0]])])
-        self.decoderBlock = nn.ModuleList([self.subBlock([vggFilters[-1]])])
+        self.decoderBlock = nn.ModuleList([self.subBlock([vggFilters[0]])])
 
         # Construct rest of the blocks
         for i in range(len(vggFilters)):
             if i == 0:
                 self.encoderBlock.append(self.subBlock([vggFilters[i]]))
-                self.decoderBlock.insert(0, self.subBlock([vggFilters[-i-1]]))
+                self.decoderBlock.insert(0, self.subBlock([vggFilters[i]]))
             elif i == 1:
                 self.encoderBlock.append(self.subBlock([vggFilters[i-1], vggFilters[i]]))
                 self.encoderBlock.append(self.subBlock([vggFilters[i]]))
-                self.decoderBlock.insert(0, self.subBlock([vggFilters[-i-1], vggFilters[-i]]))
-                self.decoderBlock.insert(0, self.subBlock([vggFilters[-i-1]]))
+                self.decoderBlock.insert(0, self.subBlock([vggFilters[i], vggFilters[i-1]]))
+                self.decoderBlock.insert(0, self.subBlock([vggFilters[i]]))
             else:
                 self.encoderBlock.append(self.subBlock([vggFilters[i-1], vggFilters[i]]))
                 self.encoderBlock.append(self.subBlock([vggFilters[i]]))
                 self.encoderBlock.append(self.subBlock([vggFilters[i]]))
-                self.decoderBlock.insert(0, self.subBlock([vggFilters[-i-1], vggFilters[-i]]))
-                self.decoderBlock.insert(0, self.subBlock([vggFilters[-i-1]]))
-                self.decoderBlock.insert(0, self.subBlock([vggFilters[-i-1]]))
+                self.decoderBlock.insert(0, self.subBlock([vggFilters[i], vggFilters[i-1]]))
+                self.decoderBlock.insert(0, self.subBlock([vggFilters[i]]))
+                self.decoderBlock.insert(0, self.subBlock([vggFilters[i]]))
 
         # Prediction layer
         if option.task == 'semantic':
-          self.predLayer = self.subBlock([filter[0], self.classNum], pred=True)
+            self.predLayer = self.subBlock([vggFilters[0], self.classNum], pred=True)
         if option.task == 'depth':
-          self.predLayer = self.subBlock([filter[0], 1], pred=True)
+            self.predLayer = self.subBlock([vggFilters[0], 1], pred=True)
         if option.task == 'normal':
-          self.predLayer = self.subBlock([filter[0], 3], pred=True)
+            self.predLayer = self.subBlock([vggFilters[0], 3], pred=True)
 
         # Pooling
         self.downSample = nn.MaxPool2d(kernel_size=2, stride=2, return_indices=True)
-        self.upSample = nn.MaxPool2d(kernel_size=2, stride=2)
+        self.upSample = nn.MaxUnpool2d(kernel_size=2, stride=2)
 
         # Decoder network (13 corresponding layers)
         # Pixelwise classifcaiton layer
         # First convolution blocks in the encoder network (layers 1, 3, 5, 8, 11)
 
         # Initialize weights
-        initWeights()
+        self.initWeights()
 
     # Sublock contains: conv + batch norm + ReLU
-    def subBlock(self, Filter, pred=False):
-        if len(Filter) == 2: # Encoder/Decoder block
+    def subBlock(self, seqFilters, pred=False):
+        if len(seqFilters) == 2: # Encoder/Decoder block
             block = nn.Sequential(
             nn.Conv2d(in_channels=seqFilters[0], out_channels=seqFilters[1], kernel_size=3, padding=1),
             nn.BatchNorm2d(num_features=seqFilters[1]),
@@ -81,13 +89,13 @@ class SegNet(nn.Module):
             else:
                 block = nn.Sequential(
                   nn.Conv2d(in_channels=seqFilters[0], out_channels=seqFilters[0], kernel_size=3, padding=1),
-                  nn.BatchNorm2d(num_features=seqFilters[1]),
+                  nn.BatchNorm2d(num_features=seqFilters[0]),
                   nn.ReLU(),
                 )
         return block
 
     def initWeights(self):
-        for m in self.Modules():
+        for m in self.modules():
             if isinstance(m, nn.Conv2d):
                 nn.init.xavier_normal_(m.weight)
                 nn.init.constant_(m.bias, 0)
@@ -114,12 +122,12 @@ class SegNet(nn.Module):
         # Forword decoder block
         for i in range(5):
             if i < 3:
-                x = self.encoderBlock[3*i+1](self.encoderBlock[3*i](x))
-                x = self.encoderBlock[3*i+2](x)
-                x = self.upSample(x)
+                x = self.upSample(x, indices[-i-1])
+                x = self.decoderBlock[3*i+1](self.decoderBlock[3*i](x))
+                x = self.decoderBlock[3*i+2](x)
             else:
-                x = self.encoderBlock[2*i+4](self.encoderBlock[2*i+3](x))
-                x = self.upSample(x)
+                x = self.upSample(x, indices[-i-1])
+                x = self.decoderBlock[2*i+4](self.decoderBlock[2*i+3](x))
 
         # Prediction layer
         if option.task == 'semantic':
