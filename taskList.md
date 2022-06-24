@@ -1,11 +1,11 @@
 ### MTAN Implementation
 
 - [X] SegNet single task (network)
-- [ ] SegNet single task (training)
-- [ ] Data preprocess
+- [ ] SegNet single task (inference)
+- [X] Data preprocess
 - [ ] SegNet multi-task (network)
-- [ ] SegNet multi-task (training)
+- [ ] SegNet multi-task (inference)
 - [ ] MTAN single task (network)
-- [ ] MTAN single task (training)
+- [ ] MTAN single task (inference)
 - [ ] MTAN multi-task (network)
-- [ ] MTAN multi-task (training)
+- [ ] MTAN multi-task (inference)
