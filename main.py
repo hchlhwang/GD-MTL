@@ -2,64 +2,63 @@ import torch
 import torch.optim as optim
 from model import *
 from util import count_parameters, model_fit, single_task_trainer
-from dataset import NYUv2
+from dataset import NYUV2
+from torch.utils.data import DataLoader
 
 
 def main():
 
+    # Set path
+    dataRoot = '/home/hochul/Repository/mtan/im2im_pred/preprocessed'
 
-  # Set GPU in desktop or mac m1
-  if torch.cuda.is_available():
-    device = torch.device('cuda:0' if torch.cuda.is_available else 'cpu')
-  else:
-    device = torch.device("mps")
+    # Set GPU in desktop or mac m1
+    if torch.cuda.is_available():
+        device = torch.device('cuda:0' if torch.cuda.is_available else 'cpu')
+        print(f'Using {torch.cuda.get_device_name(0)} GPS device')
+    else:
+        device = torch.device('mps')
+        print('Using mac m1')
 
-  print(f"Using {torch.cuda.get_device_name(0)} GPS device")
+    # Set hyperparameters
+    batchSize = 64
+    learningRate = 1e-4
+    epochs = 200
 
-  # Send model to GPU
-  model = SegNet().to(device)
+    # Define dataset
+    nyuv2TrainData = NYUV2(dataRoot)
+    nyuv2TestData = NYUV2(dataRoot, train=False)
 
-  # Optimze params
-  optimizer = optim.Adam(model.parameters(), lr=1e-4)
-  scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=100, gamma=0.5)
+    # Define dataloader
+    nyuv2TrainLoader = DataLoader(dataset=nyuv2TrainData,
+                                  batch_size=batchSize,
+                                  shuffle=True,
+                                  )
+    nyuv2TrainLoader = DataLoader(dataset=nyuv2TestData,
+                                  batch_size=batchSize,
+                                  shuffle=False,
+                                  )
 
-  print('Parameter Space: ABS: {:.1f}, REL: {:.4f}'.format(count_parameters(model),
-                                                           count_parameters(model) / 24981069))
-  print('LOSS FORMAT: SEMANTIC_LOSS MEAN_IOU PIX_ACC | DEPTH_LOSS ABS_ERR REL_ERR | NORMAL_LOSS MEAN MED <11.25 <22.5 <30')
+    # Set model
+    model = SegNet().to(device)
+
+    # Set optimizer
+    optimizer = torch.optim.Adam(model.parameters(), lr=learningRate)
+
+    # TODO
+    # inference(loader,model,device,optimizer)
 
 
-  # define dataset
-  dataset_path = option.data
-  if option.apply_augmentation:
-      nyuv2_train_set = NYUv2(root=dataset_path, train=True, augmentation=True)
-      print('Applying data augmentation on NYUv2.')
-  else:
-      nyuv2_train_set = NYUv2(root=dataset_path, train=True)
-      print('Standard training strategy without data augmentation.')
-
-  nyuv2_test_set = NYUv2(root=dataset_path, train=False)
-
-  batch_size = 2
-  nyuv2_train_loader = torch.utils.data.DataLoader(
-      dataset=nyuv2_train_set,
-      batch_size=batch_size,
-      shuffle=True)
-
-  nyuv2_test_loader = torch.utils.data.DataLoader(
-      dataset=nyuv2_test_set,
-      batch_size=batch_size,
-      shuffle=False)
-
-  # Train and evaluate single-task network
-  single_task_trainer(nyuv2_train_loader,
-                      nyuv2_test_loader,
-                      model,
-                      device,
-                      optimizer,
-                      scheduler,
-                      option,
-                      200)
 
 
 if __name__ == '__main__':
-  main()
+    main()
+    # parser = argparse.ArgumentParser(description='SegNet, single-task')
+    # parser.add_argument('--checkpoint', default='checkpoint', type=str, help="Checkpoint path")
+    # parser.add_argument('--data', default='preprocessed', type=str, help="Data path")
+    # parser.add_argument('-B','--batch-size', default='2', type=int, help="Batch size")
+    # parser.add_argument('-L','--learning-rate', default='1e-3', type=float, help="Learning rate")
+    # parser.add_argument('--task', default='semantic', type=str, help="Task: semantic depth, normal")
+    # parser.add_argument('--apply_augmentation', action='store_true', help='toggle to apply data augmentation on NYUv2')
+    # parser.add_argument('--multitask', dest='multitask', action='store_true',
+    #                     help='Multi-task (not single task)')
+    # option = parser.parse_args()

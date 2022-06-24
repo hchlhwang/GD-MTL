@@ -17,9 +17,14 @@ import argparse
 
 
 parser = argparse.ArgumentParser(description='SegNet, single-task')
-parser.add_argument('--task', default='semantic', type=str, help="Task: semantic depth, normal")
+parser.add_argument('--checkpoint', default='checkpoint', type=str, help="Checkpoint path")
 parser.add_argument('--data', default='preprocessed', type=str, help="Data path")
+parser.add_argument('-B','--batch-size', default='2', type=int, help="Batch size")
+parser.add_argument('-L','--learning-rate', default='1e-3', type=float, help="Learning rate")
+parser.add_argument('--task', default='semantic', type=str, help="Task: semantic depth, normal")
 parser.add_argument('--apply_augmentation', action='store_true', help='toggle to apply data augmentation on NYUv2')
+parser.add_argument('--multitask', dest='multitask', action='store_true',
+                    help='Multi-task (not single task)')
 option = parser.parse_args()
 
 
